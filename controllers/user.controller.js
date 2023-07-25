@@ -1,0 +1,75 @@
+const User = require("../models/user.model");
+const bcrypt = require("bcrypt");
+const jwt = require('jsonwebtoken');
+const createNewUser = async (req, res) => {
+    try {
+        const { firstName, lastName, password, email, address, dateOfBirth, role } =
+            req.body;
+        const existUser = await User.findOne({ email: email });
+        if (!existUser) {
+            const hash = await bcrypt.hash(password, 10);
+            const newUser = new User({
+                firstName: firstName,
+                lastName: lastName,
+                password: hash,
+                email: email,
+                address: address,
+                dateOfBirth: dateOfBirth,
+                role: role
+            });
+            const result = await newUser.save();
+            res.json({
+                success: true,
+                result: result
+            });
+        } else {
+            res.json({
+                success: false,
+                message: "Email existant !"
+            });
+        }
+    } catch (error) {
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email: email });
+        if (!user) {
+            res.json({ success: false, message: "Email ou mot de passe incorrect" });
+        } else {
+            const verif = await bcrypt.compare(password, user.password);
+            if (verif) {
+                const token = jwt.sign({ user: user._id }, 'TOKEN_SECRET');
+                res.json({ success: true, user: user, token: token });
+            } else {
+                res.json({
+                    success: false,
+                    message: "Email ou mot de passe incorrect"
+                });
+            }
+        }
+    } catch (error) {
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find();
+        res.json({ success: true, users: users })
+    } catch (error) {
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+}
+module.exports = { createNewUser, loginUser, getAllUsers };
